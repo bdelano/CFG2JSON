@@ -1,9 +1,8 @@
 package Scrape;
+use strict;
 use FindBin;
 use lib $FindBin::Bin;
 use JSON;
-use strict;
-use NetAddr::IP;
 use Force10;
 use Arista;
 use Cisco;
@@ -45,6 +44,10 @@ sub _getVendor{
 sub json{
   my ($self,$key)=@_;
   return encode_json $self->{$key};
+}
+sub gethash{
+  my $self = shift;
+  return $self->{$key}
 }
 
 1;

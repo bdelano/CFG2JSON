@@ -1,7 +1,6 @@
 package Cisco;
 use strict;
 use NetAddr::IP;
-use Data::Dumper;
 
 sub new{
   my ($class,$args)=@_;
