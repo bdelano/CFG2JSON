@@ -1,4 +1,4 @@
-# config2json
+# CFG2JSON
 converts rancid configuration files to JSON format
 
 ## Purpose
