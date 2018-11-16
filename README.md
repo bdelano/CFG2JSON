@@ -12,5 +12,4 @@ Please look at the example.pl file above for inspiration
 ## Dependencies
 * Perl (tested on 5.14)
 * FindBin
-* DataDumper (for troubleshooting)
 * NetAddr::IP
