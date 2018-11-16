@@ -10,7 +10,8 @@ use CFG2JSON::Juniper;
 use File::Slurp;
 
 sub new{
-  my ($class,$args)=@_;
+  my $class = shift;
+  my $args = { @_ };
   my $filepath=$args->{filepath};
   my $hostname=$args->{hostname};
   my $sitename=$args->{sitename};
@@ -18,13 +19,13 @@ sub new{
   my $vendor=_getVendor($config);
   my $dev;
   if($vendor eq 'force10'){
-    $dev=CFG2JSON::Force10->new({config=>$config});
+    $dev=CFG2JSON::Force10->new(config=>$config);
   }elsif($vendor eq 'arista'){
-    $dev=CFG2JSON::Arista->new({config=>$config});
+    $dev=CFG2JSON::Arista->new(config=>$config);
   }elsif($vendor eq 'cisco'){
-    $dev=CFG2JSON::Cisco->new({config=>$config})
+    $dev=CFG2JSON::Cisco->new(config=>$config)
   }elsif($vendor =~ /joy-juniper/){
-    $dev=CFG2JSON::Juniper->new({config=>$config})
+    $dev=CFG2JSON::Juniper->new(config=>$config)
   }
   $dev->{device}{sitename}=$sitename;
   $dev->{device}{hostname}=$hostname;

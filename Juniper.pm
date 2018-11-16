@@ -2,7 +2,8 @@ package CFG2JSON::Juniper;
 use strict;
 
 sub new{
-  my ($class,$args)=@_;
+  my $class = shift;
+  my $args = { @_ };
   my $config=$args->{config};
   my $dev=getinfo($config);
   my $interfaces=getinterfaces($config);
