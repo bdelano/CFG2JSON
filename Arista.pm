@@ -1,4 +1,4 @@
-package Arista;
+package CFG2JSON::Arista;
 use strict;
 
 sub new{

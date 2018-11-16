@@ -1,6 +1,5 @@
-package Force10;
+package CFG2JSON::Force10;
 use strict;
-use Data::Dumper;
 
 sub new{
   my ($class,$args)=@_;

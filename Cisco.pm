@@ -1,4 +1,4 @@
-package Cisco;
+package CFG2JSON::Cisco;
 use strict;
 use NetAddr::IP;
 

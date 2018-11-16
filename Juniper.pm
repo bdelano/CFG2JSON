@@ -1,7 +1,5 @@
-package Juniper;
+package CFG2JSON::Juniper;
 use strict;
-use NetAddr::IP;
-use Data::Dumper;
 
 sub new{
   my ($class,$args)=@_;

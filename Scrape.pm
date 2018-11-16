@@ -1,12 +1,12 @@
-package Scrape;
+package CFG2JSON::Scrape;
 use strict;
 use FindBin;
 use lib $FindBin::Bin;
 use JSON;
-use Force10;
-use Arista;
-use Cisco;
-use Juniper;
+use CFG2JSON::Force10;
+use CFG2JSON::Arista;
+use CFG2JSON::Cisco;
+use CFG2JSON::Juniper;
 use File::Slurp;
 
 sub new{
@@ -18,13 +18,13 @@ sub new{
   my $vendor=_getVendor($config);
   my $dev;
   if($vendor eq 'force10'){
-    $dev=Force10->new({config=>$config});
+    $dev=CFG2JSON::Force10->new({config=>$config});
   }elsif($vendor eq 'arista'){
-    $dev=Arista->new({config=>$config});
+    $dev=CFG2JSON::Arista->new({config=>$config});
   }elsif($vendor eq 'cisco'){
-    $dev=Cisco->new({config=>$config})
+    $dev=CFG2JSON::Cisco->new({config=>$config})
   }elsif($vendor =~ /joy-juniper/){
-    $dev=Juniper->new({config=>$config})
+    $dev=CFG2JSON::Juniper->new({config=>$config})
   }
   $dev->{device}{sitename}=$sitename;
   $dev->{device}{hostname}=$hostname;
@@ -46,7 +46,7 @@ sub json{
   return encode_json $self->{$key};
 }
 sub gethash{
-  my $self = shift;
+  my ($self,$key)=@_;
   return $self->{$key}
 }
 
