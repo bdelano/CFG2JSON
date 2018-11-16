@@ -11,5 +11,5 @@ Please look at the example.pl file above for inspiration
 
 ## Dependencies
 * Perl (tested on 5.14)
-* FindBin
-* NetAddr::IP
+* FindBin https://metacpan.org/pod/FindBin
+* NetAddr::IP https://metacpan.org/pod/NetAddr::IP
