@@ -42,7 +42,7 @@ sub getinterfaces{
   for(@ints_arr){
     my $int=$_;
     if($int=~/nterface (.*?)<nl>(.*?(shutdown|!<nl>router)).*/i){
-      my $i=$1;
+      my $i=lc($1);
       my $vl=$i;
       my $rc=$2;
       $rc=~s/!<nl>router$//i;
@@ -52,6 +52,18 @@ sub getinterfaces{
         $ints->{$i}{description}=$1 if $l=~/description (.*)/i;
         $ints->{$i}{ipaddress}=$1 if $l=~/ip address (.*)/i;
         $ints->{$i}{vrf}=$1 if $l=~/ip vrf forwarding (.*)/i;
+        $ints->{$i}{mtu}=$1 if $l=~m/mtu\s([\d]+)/i;
+        if($l=~m/\s+(port-channel\s[\d]+) mode active/){
+          $ints->{$i}{parent}=$1;
+          push(@{$ints->{$1}{children}},$i);
+        }
+        if($i=~m/vlan/){
+          $ints->{$i}{formfactor}='virtual';
+        }elsif($i=~m/port.*/){
+          $ints->{$i}{formfactor}='LAG';
+        }else{
+          $ints->{$i}{formfactor}='physical';
+        }
       }
     }
   }

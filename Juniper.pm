@@ -1,11 +1,18 @@
 package CFG2JSON::Juniper;
 use strict;
+use Data::Dumper;
+my $riint;
+my $gbics;
+my $errors;
 
 sub new{
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};
+  $riint=sortris($config); #build hash of vrf interfaces
   my $dev=getinfo($config);
+  $gbics=buildGbicHash($config,$dev->{model});
+  #print Dumper $gbics;
   my $interfaces=getinterfaces($config);
   my $nats=getnats($config);
   $dev->{interfaces}=$interfaces;
@@ -18,7 +25,11 @@ sub getinfo{
   my $obj={};
   for(@config){
     if($_=~m/# Chassis\s+([\w]+)\s+([\w]+)/i){
-      $obj->{serial}=$1;
+      if($obj->{serial}){
+        $obj->{serial}=$obj->{serial}.','.$1
+      }else{
+        $obj->{serial}=$1;
+      }
       $obj->{model}=$2;
     }
     $obj->{version}=$1 if $_=~/.*O\/S\s+Version\s(.*)\sby builder.*/i;
@@ -42,14 +53,12 @@ sub getinterfaces {
 		my $l=$_;
     #print $l."\n";
 		if($l=~/.*interfaces\s([\w\-\/]+)\s(unit\s([\d]+)\s)?.*/i){
-			my $bi=$1;
-			my $si=$2;
-			#print "$bi : $si \n";
-			if(!$si){$si='unit 0';}
-				my $wc="$bi $si";
-				$wc=~s/\s$//ig;
-				$wc=~s/\sunit\s/\./i;
-				my $ic=$intcount_hash{$bi};
+			my ($bi,$si)=($1,$2);
+      $si='unit 0' if !$si;
+			my $wc="$bi $si";
+			$wc=~s/\s$//ig;
+			$wc=~s/\sunit\s/\./i;
+			my $ic=$intcount_hash{$bi};
 			if($int_hold{$wc}){
 				$int_hold{$wc}=$int_hold{$wc} . '<nl>' . $l;
 			}else{
@@ -62,25 +71,7 @@ sub getinterfaces {
       	}
 			}
 		}elsif($l=~/.*interfaces\s(.*)/){
-			print "NOMATCH:$1\n"
-		}
-	}
-
-	for(keys %int_hold){
-		my $subi=$_;
-		my $bi=$subi;
-		$bi=~s/\.[\d]+//i;
-		my $count=$intcount_hash{$bi};
-		if($count==2){
-			if($subi=~m/ae[\d]+\./){
-			$int_hold{$bi}=$int_hold{$bi} . '<nl>' . $int_hold{$subi};
-			delete($int_hold{$subi});
-			}elsif($subi=~m/ae/i){
-			}elsif($subi=~/\./){
-			$int_hold{$subi}=$int_hold{$bi} . '<nl>' . $int_hold{$subi};
-			}else{
-			delete($int_hold{$subi});
-			}
+      push(@{$errors},'NOMATCH:'.$1);
 		}
 	}
 
@@ -135,20 +126,24 @@ sub getinterfaces {
 		$rawcfg=~s/[^a-zA-Z0-9\s:_\-()<>{}\/\.]*//g;
 		my $vlanlist = '';
 		my $vlc=0;
-		my $intsec=1;
-    my $v6intsec=1;
+		my $intsec=0;
+    my $v6intsec=0;
 		my %ipc_hash;
+    $ints->{$interface}{vrf}=$riint->{$interface} if $riint->{$interface};
+    $ints->{$interface}{mtu}='1500';
 		for(split(/<nl>/,$rawcfg)){
 			my $intdet=$_;
       $ints->{$interface}{description}=$1 if $intdet=~/.*description\s(.*)$/ig;
       $ints->{$interface}{ipaddress}=$1 if $intdet=~/^address\s([\d\.\/]+)$/ig;
+      $ints->{$interface}{mtu}=$1 if $intdet=~/.*mtu\s([\d]+)/ig;
+      $ints->{$interface}{vlan}=$1 if $intdet=~/.*vlan-id\s([\d]+)/ig;
 			if($intdet=~/127\.0\.0\.1/){
 			}elsif($intdet =~ m/.*inet address\s([\d\.\/]+).*/ig){
 				my $ipc=$1;
 				if($ints->{$interface}{ipaddress}){
 					if(!$ipc_hash{$ipc}){
+            $intsec++;
             $ints->{$interface}{'ipaddress'.$intsec}=$ipc;
-						$intsec++;
 						$ipc_hash{$ipc}=1;
 					}
 				}else{
@@ -159,24 +154,57 @@ sub getinterfaces {
 				my $ipc=$1;
 				if($ints->{$interface}{v6ipaddress}){
 					if(!$ipc_hash{$ipc}){
-						$ints->{$interface}{'v6ipaddress'.$v6intsec}=$ipc;
             $v6intsec++;
+						$ints->{$interface}{'v6ipaddress'.$v6intsec}=$ipc;
 						$ipc_hash{$ipc}=1;
 					}
 				}else{
 					$ints->{$interface}{v6ipaddress}=$ipc;
           $ipc_hash{$ipc}=1;
         }
-      }elsif($intdet =~ m/set interfaces (.*) ether-options 802.3ad.*([\d]+)/ig){
+      }elsif($intdet=~/set interfaces (.*) gigether-options\sredundant-parent\s(.*)/){
+        my $pcinterface=$1.'.0';
+        my $pcid=$2;
+        if($interface=~/reth[\d]+/){
+          $ints->{$interface}{formfactor}='LAG';
+          push(@{$ints->{$interface}{children}},$pcinterface);
+        }else{
+          $ints->{$pcinterface}{parent}=$pcid;
+        }
+      }elsif($intdet =~ m/set interfaces (.*)\s[\w]+ether-options 802.3ad.*(ae[\d]+)/ig){
 				my $pcinterface = $1 . '.0';
 				my $pcid=$2;
 				if($interface=~/ae[\d]+/i){
-	        $ints->{$pcinterface}{description} = $ints->{$pcinterface}{description} . "<br>channel-group $pcid";
-					$ints->{$interface}{description}="INT: $pcinterface<br>" . $ints->{$interface}{description}
-				}
+          $ints->{$interface}{formfactor}='LAG';
+          push(@{$ints->{$interface}{children}},$pcinterface);
+				}else{
+          $ints->{$pcinterface}{parent}=$pcid;
+        }
 			}
 		}
+    $ints->{$interface}{icount}=$intsec if $intsec>0;
+    $ints->{$interface}{v6icount}=$v6intsec if $v6intsec>0;
 	}
+  #determine interface type:
+  for(keys %int_hold){
+    my $interface=$_;
+    if(!$ints->{$interface}{formfactor}){
+      if($interface=~/.*\.([1-9][\d]+)/i){
+        $ints->{$interface}{formfactor}='virtual';
+      }elsif($interface=~m/^(reth|ae|lo|st)/i){
+        $ints->{$interface}{formfactor}='virtual';
+      }else{
+        my $bi=$interface;
+        $bi=~s/(xe|et)-//i;
+        if($gbics->{$bi}){
+          $ints->{$interface}{formfactor}=$gbics->{$bi}{formfactor};
+          $ints->{$interface}{serial}=$gbics->{$bi}{serial};
+        }else{
+          $ints->{$interface}{formfactor}='physical';
+        }
+      }
+    }
+  }
 	return $ints;
 }
 
@@ -230,6 +258,63 @@ sub getnats{
     push(@nat_arr,$natobj)
 	}
   return \@nat_arr;
+}
+
+sub sortris {
+  my $c = shift;
+  $c=~s/\n/<nl>/g;
+  my $riret;
+	my @cfglines=split(/<nl>/,$c);
+	my @infolines = grep(/set routing-instance.*interface.*/,@cfglines);
+	my $infoline;
+  foreach $infoline(@infolines){
+  	$infoline =~ s/\s\s//ig;
+		if($infoline =~ m/set\srouting-instances\s([\w\-\_]+)\sinterface\s([\w\-\/\.]+)/ig){
+	    my $ri = $1;
+	    my $interface = $2;
+	    $riret->{$interface} = $ri;          #print "NOMATCHRI: $infoline \n";
+		}
+	}
+  return $riret;
+}
+
+sub buildGbicHash{
+  my ($c,$model)=@_;
+  my %fpcstart_hash;
+  $fpcstart_hash{'SRX5400_0'}='0';
+  $fpcstart_hash{'SRX5400_1'}='3';
+  $fpcstart_hash{'SRX1500_0'}='0';
+  $fpcstart_hash{'SRX1500_1'}='7';
+  $c=~s/\n/<nl>/g;
+  my $inv;
+  for(split(/show chassis/,$c)){
+    if($_=~/hardware detail/){
+      my ($node,$fpc,$mic,$pic,$xcvr,$info);
+      for(split(/<nl>/,$_)){
+        my $l=$_;
+        if(lc($l)=~/\s+node([\d]+):.*/){
+          $node=$1;
+        }elsif(lc($l)=~/\s+fpc\s([\d]+)\s+.*/){
+          $fpc=$1;
+        }elsif(lc($l)=~/\s+mic\s([\d]+)\s+.*/){
+          $mic=$1;
+        }elsif(lc($l)=~/\s+pic\s([\d]+)\s+.*/){
+          $pic=$1;
+        }elsif(lc($l)=~/\s+xcvr\s([\d]+)\s+(.*)/){
+          $xcvr=$1;
+          my @info=split(/\s+/,$2);
+          my $modnum=$fpc+($fpcstart_hash{$model.'_'.$node});
+          my $int=$modnum.'/';
+          $int.=$mic.'/' if $mic;
+          $int.=$pic.'/'.$xcvr.'.0';
+          $inv->{$int}{serial}=$info[-2];
+          $inv->{$int}{formfactor}=$info[-1];
+          $inv->{$int}{partnumber}=$info[-3]
+        }
+      }
+    }
+  }
+  return $inv;
 }
 
 1
