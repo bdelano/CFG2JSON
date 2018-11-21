@@ -17,6 +17,7 @@ sub new{
   my $sitename=$args->{sitename};
   my $config=read_file($filepath.'/'.$sitename.'/configs/'.$hostname);
   my $vendor=_getVendor($config);
+  my $mgmtip=nslookup($hostname);
   my $dev;
   if($vendor eq 'force10'){
     $dev=CFG2JSON::Force10->new(config=>$config);
@@ -24,11 +25,13 @@ sub new{
     $dev=CFG2JSON::Arista->new(config=>$config);
   }elsif($vendor eq 'cisco'){
     $dev=CFG2JSON::Cisco->new(config=>$config);
-  }elsif($vendor =~ /joy-juniper/){
+  }elsif($vendor =~ /juniper/){
     $dev=CFG2JSON::Juniper->new(config=>$config);
   }
+  $dev->{device}{mgmtip}=$mgmtip;
   $dev->{device}{sitename}=$sitename;
   $dev->{device}{hostname}=$hostname;
+  $dev->{device}{vendor}=$vendor;
   $dev->{device}{devicerole}=getDeviceRole($hostname);
   my $self = bless {
     config => $config,
@@ -50,6 +53,17 @@ sub json{
 sub gethash{
   my $self=shift;
   return $self->{device}
+}
+
+sub nslookup{
+  my $hn=$_[0];
+  #print "nslookup $hn\n";
+  my $nsl=`nslookup $_[0]`;
+  $nsl=~s/\n//g;
+  $nsl=~s/\'//g;
+  $nsl=~s/.*usAddress: (.*)$/$1/i;
+  $nsl=~s/.*server cant find.*/notfound/i;
+  return $nsl;
 }
 
 sub getDeviceRole{
