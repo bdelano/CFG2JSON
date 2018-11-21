@@ -38,21 +38,23 @@ sub getinterfaces{
   shift @ints_arr;
   for(@ints_arr){
     my $int=$_;
-    if(lc($int)=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])<nl>(.*)/ig){
+    if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])<nl>(.*)/ig){
       my $i=$1;
       my $rc=$2;
       $ints->{$i}{mtu}='1500';
       $rc=~s/!<nl>router$//i;
       for(split/<nl>/,$rc){
         my $l=$_;
+        push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'4'}) if $l=~/vrrp\s[\d]+\sip\s([\d]+\..*)/;
+        push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'6'}) if $l=~/vrrp\s[\d]+\sip\s([\w]+:.*)/;
         $ints->{$i}{description}=$1 if $l=~/\s+description\s([!\"\'():,\@.&\w\s\/\-]+).*$/i;
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
-        if($i=~/vlan.*/){
+        if($i=~/^(vlan|port).*/i){
           $ints->{$i}{formfactor}='virtual';
-        }elsif($gbics->{$i}){
-          $ints->{$i}{formfactor}=$gbics->{$i}{formfactor};
-          $ints->{$i}{serial}=$gbics->{$i}{serial};
+        }elsif($gbics->{lc($i)}){
+          $ints->{$i}{formfactor}=$gbics->{lc($i)}{formfactor};
+          $ints->{$i}{serial}=$gbics->{lc($i)}{serial};
         }elsif($i=~/gigabitethernet/){
           $ints->{$i}{formfactor}='10/100/1000BaseTX';
         }elsif($i=~/fast/){
@@ -60,9 +62,12 @@ sub getinterfaces{
         }else{
           $ints->{$i}{formfactor}='physical';
         }
-        if($l=~/\s+ip\saddress\s([.\d]+)\s([\d\.]+).*$/i){
-          my $ipaddress=_getCIDR($1,$2);
-          $ints->{$i}{ipaddress}=$ipaddress;
+        if($l=~/\s+ip(v6)?\saddress\s([:.\w]+)\s([\d\.]+).*$/i){
+          my $version=$1;
+          $version=~s/v//;
+          $version='4' if !$version;
+          my ($ip,$bits)=_getCIDR($2,$3);
+          push(@{$ints->{$i}{ipaddress}},{ip=>$ip,bits=>$bits,type=>'interface',version=>$version});
         }
       }
     }
@@ -74,8 +79,7 @@ sub _getCIDR{
   my ($ip,$mask)=@_;
   my $ninet = new NetAddr::IP "$ip $mask";
   my $bits=$ninet->masklen;
-  my $ipbits=$ip.'/'.$bits;
-  return $ipbits;
+  return ($ip,$bits);
 }
 
 sub buildGbicHash{

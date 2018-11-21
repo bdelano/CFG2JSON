@@ -134,56 +134,35 @@ sub getinterfaces {
 		for(split(/<nl>/,$rawcfg)){
 			my $intdet=$_;
       $ints->{$interface}{description}=$1 if $intdet=~/.*description\s(.*)$/ig;
-      $ints->{$interface}{ipaddress}=$1 if $intdet=~/^address\s([\d\.\/]+)$/ig;
       $ints->{$interface}{mtu}=$1 if $intdet=~/.*mtu\s([\d]+)/ig;
       $ints->{$interface}{vlan}=$1 if $intdet=~/.*vlan-id\s([\d]+)/ig;
 			if($intdet=~/127\.0\.0\.1/){
-			}elsif($intdet =~ m/.*inet address\s([\d\.\/]+).*/ig){
-				my $ipc=$1;
-				if($ints->{$interface}{ipaddress}){
-					if(!$ipc_hash{$ipc}){
-            $intsec++;
-            $ints->{$interface}{'ipaddress'.$intsec}=$ipc;
-						$ipc_hash{$ipc}=1;
-					}
-				}else{
-          $ints->{$interface}{ipaddress}=$ipc;
-					$ipc_hash{$ipc}=1;
-				}
-			}elsif($intdet =~m/inet6 address\s([\w:\/]+).*/ig){
-				my $ipc=$1;
-				if($ints->{$interface}{v6ipaddress}){
-					if(!$ipc_hash{$ipc}){
-            $v6intsec++;
-						$ints->{$interface}{'v6ipaddress'.$v6intsec}=$ipc;
-						$ipc_hash{$ipc}=1;
-					}
-				}else{
-					$ints->{$interface}{v6ipaddress}=$ipc;
-          $ipc_hash{$ipc}=1;
-        }
-      }elsif($intdet=~/set interfaces (.*) gigether-options\sredundant-parent\s(.*)/){
+			}elsif($intdet =~ m/.*inet(6)? address\s([\w\.:]+)\/([\d]+)(.*)/ig){
+        my ($version,$ip,$bits,$info)=($1,$2,$3,$4);
+        $version='4' if !$version;
+        push(@{$ints->{$interface}{ipaddress}},{ip=>$1,bits=>$bits,type=>'vrrp',version=>$version}) if $info=~/virtual-address\s(.*)/;
+        push(@{$ints->{$interface}{ipaddress}},{ip=>$ip,bits=>$bits,type=>'interface',version=>$version}) if !$ipc_hash{$ip};
+        $ipc_hash{$ip}='hold';
+      }elsif($intdet=~/set interfaces (.*) [\w-]+ther-options\sredundant-parent\s(.*)/){
         my $pcinterface=$1.'.0';
-        my $pcid=$2;
+        my $pcid=$2.'.0';
         if($interface=~/reth[\d]+/){
           $ints->{$interface}{formfactor}='LAG';
           push(@{$ints->{$interface}{children}},$pcinterface);
         }else{
           $ints->{$pcinterface}{parent}=$pcid;
         }
-      }elsif($intdet =~ m/set interfaces (.*)\s[\w]+ether-options 802.3ad.*(ae[\d]+)/ig){
+      }elsif($intdet =~ m/set interfaces (.*)\s[\w-]+ther-options 802.3ad.*(ae[\d]+)/ig){
 				my $pcinterface = $1 . '.0';
-				my $pcid=$2;
+				my $pcid=$2.'.0';
 				if($interface=~/ae[\d]+/i){
           $ints->{$interface}{formfactor}='LAG';
           push(@{$ints->{$interface}{children}},$pcinterface);
 				}else{
           $ints->{$pcinterface}{parent}=$pcid;
         }
-			}
+      }
 		}
-    $ints->{$interface}{icount}=$intsec if $intsec>0;
-    $ints->{$interface}{v6icount}=$v6intsec if $v6intsec>0;
 	}
   #determine interface type:
   for(keys %int_hold){

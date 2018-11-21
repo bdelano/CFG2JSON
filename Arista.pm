@@ -60,7 +60,7 @@ sub getinterfaces{
   my @ints_arr=split("!",$c);
   shift @ints_arr;
   for(@ints_arr){
-    my $int=lc($_);
+    my $int=$_;
     if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])\s?<nl>\s?(.*)/ig){
       my $i=$1;
       if($i=~/(vlan|loop)/){
@@ -76,10 +76,9 @@ sub getinterfaces{
         #print "i:$i bi:$bi\n";
         if($gbics->{$bi}{model}){
           $ints->{$i}{formfactor}=$gbics->{$bi}{model};
-          $ints->{$i}{serial}=$gbics->{$bi}{serial}
+          $ints->{$i}{serial}=$gbics->{$bi}{serial};
         }elsif($i=~/management/){
           $ints->{$i}{formfactor}='1000BaseTX';
-        }
         }else{
           $ints->{$i}{formfactor}='physical';
         }
@@ -91,7 +90,7 @@ sub getinterfaces{
       for(split/<nl>/,$rc){
         my $l=$_;
         $ints->{$i}{description}=$1 if $l=~/\s+description\s([!\"\'():,\@.&\w\s\/\-]+).*$/i;
-        $ints->{$i}{ipaddress}=$1 if $l=~/\s+ip\saddress\s([.\d]+\/[\d]+).*$/i;
+        push(@{$ints->{$i}{ipaddress}},{ip=>$1,bits=>$2,type=>'interface',version=>'4'}) if $l=~/\s+ip\saddress\s([\d]+\..*)\/([\d]+)$/;
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
         if($l=~/\s+channel-group\s([\d]+)\smode active/){
