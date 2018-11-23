@@ -43,6 +43,18 @@ sub getinterfaces{
       my $rc=$2;
       $ints->{$i}{mtu}='1500';
       $rc=~s/!<nl>router$//i;
+      if($i=~/^(vlan|port).*/i){
+        $ints->{$i}{formfactor}='virtual';
+      }elsif($gbics->{lc($i)}){
+        $ints->{$i}{formfactor}=$gbics->{lc($i)}{formfactor};
+        $ints->{$i}{serial}=$gbics->{lc($i)}{serial};
+      }elsif($i=~/gigabitethernet/i){
+        $ints->{$i}{formfactor}='10/100/1000BaseTX';
+      }elsif($i=~/fast/i){
+        $ints->{$i}{formfactor}='100BASE-TX';
+      }else{
+        $ints->{$i}{formfactor}='physical';
+      }
       for(split/<nl>/,$rc){
         my $l=$_;
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'4'}) if $l=~/vrrp\s[\d]+\sip\s([\d]+\..*)/;
@@ -50,18 +62,6 @@ sub getinterfaces{
         $ints->{$i}{description}=$1 if $l=~/\s+description\s([!\"\'():,\@.&\w\s\/\-]+).*$/i;
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
-        if($i=~/^(vlan|port).*/i){
-          $ints->{$i}{formfactor}='virtual';
-        }elsif($gbics->{lc($i)}){
-          $ints->{$i}{formfactor}=$gbics->{lc($i)}{formfactor};
-          $ints->{$i}{serial}=$gbics->{lc($i)}{serial};
-        }elsif($i=~/gigabitethernet/){
-          $ints->{$i}{formfactor}='10/100/1000BaseTX';
-        }elsif($i=~/fast/){
-          $ints->{$i}{formfactor}='100BASE-TX';
-        }else{
-          $ints->{$i}{formfactor}='physical';
-        }
         if($l=~/\s+ip(v6)?\saddress\s([:.\w]+)\s([\d\.]+).*$/i){
           my $version=$1;
           $version=~s/v//;

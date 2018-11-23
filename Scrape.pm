@@ -27,6 +27,9 @@ sub new{
     $dev=CFG2JSON::Cisco->new(config=>$config);
   }elsif($vendor =~ /juniper/){
     $dev=CFG2JSON::Juniper->new(config=>$config);
+  }else{
+    print "No matching vendor found for $hostname!\n";
+    exit;
   }
   $dev->{device}{mgmtip}=$mgmtip;
   $dev->{device}{sitename}=$sitename;
@@ -42,7 +45,9 @@ sub new{
 sub _getVendor{
   my @cl=split("\n",$_[0]);
   my $vl=shift @cl;
-  $vl=~s/!RANCID-CONTENT-TYPE: //i;
+  $vl=~s/[!#]RANCID-CONTENT-TYPE: //i;
+  $vl=~s/joy-//i;
+  $vl=~s/-srx//i;
   return $vl
 }
 
@@ -107,8 +112,10 @@ sub getDeviceRole{
     $req='Console';
   }elsif($l=~/.*(kvm|dns|tac|opennms|cacti|netopsinfo|noctool|nftracker|ns[12]\.).*/i){
     $req='Server';
+  }elsif($l=~/.*mx204.*/){
+    $req='Core';
   }elsif($l=~/.*-e300-[12]/){
-    $req='Core'
+    $req='Core';
   }elsif($l=~/.*-tor/i || $l=~/.*[\d]+\-[12]/){
     $req='TOR';
   }

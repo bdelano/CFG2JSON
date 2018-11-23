@@ -36,9 +36,9 @@ sub buildGBICHash{
         if($_=~/!\s+([\d\/]+.*)/){
           my @list=split(/\s+/,$1);
           if($list[1] eq 'Not'){
-            $ret->{$list[0]}{vendor}='notpresent';
-            $ret->{$list[0]}{model}='notpresent';
-            $ret->{$list[0]}{serial}='notpresent';
+            $ret->{$list[0]}{vendor}='none';
+            $ret->{$list[0]}{model}='none';
+            $ret->{$list[0]}{serial}='none';
           }else{
             $ret->{$list[0]}{vendor}=$list[1];
             $ret->{$list[0]}{model}=$list[-3];
@@ -63,15 +63,15 @@ sub getinterfaces{
     my $int=$_;
     if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])\s?<nl>\s?(.*)/ig){
       my $i=$1;
-      if($i=~/(vlan|loop)/){
+      if($i=~/(Vlan|Loop)/i){
         $ints->{$i}{formfactor}='virtual';
-      }elsif($i=~/port-/){
+      }elsif($i=~/port-/i){
         $ints->{$i}{formfactor}='lag';
       }elsif($i=~/.*\.[\d]+$/){
         $ints->{$i}{formfactor}='virtual';
       }else{
         my $bi=$i;
-        $bi=~s/ethernet//;
+        $bi=~s/Ethernet//;
         $bi=~s/\/1$//;
         #print "i:$i bi:$bi\n";
         if($gbics->{$bi}{model}){
@@ -94,8 +94,8 @@ sub getinterfaces{
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
         if($l=~/\s+channel-group\s([\d]+)\smode active/){
-          $ints->{$i}{parent}='port-channel'.$1;
-          push(@{$ints->{'port-channel'.$1}{children}},$i);
+          $ints->{$i}{parent}='Port-Channel'.$1;
+          push(@{$ints->{'Port-Channel'.$1}{children}},$i);
         }
       }
     }
