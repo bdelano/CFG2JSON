@@ -11,7 +11,7 @@ sub new{
   $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
   my $interfaces=getinterfaces($config);
-  $dev->{interfaces}=$interfaces;
+  #$dev->{interfaces}=$interfaces;
   my $self = bless {device=>$dev}, $class;
 }
 
@@ -20,17 +20,24 @@ sub getinfo{
   my $obj={};
   my @inventory=[];
   for(@config){
-    $obj->{version}=$1 if $_=~/!Inventory: Software Version\s+:\s(.*)/i;
+    if($_=~/!Inventory: Software Version\s+:\s([\d\.]+)\((.*)\)/i){
+      $obj->{version}=$1;
+      $obj->{subversion}=$2;
+    }
     $obj->{model}=$2 if $_=~/!Inventory: (System|Chassis) Type\s+:\s(.*?)\s+/i;
+    $obj->{nics_num}=$obj->{nics_num}+$1 if $_=~/!Chassis: Num Ports\s+:\s+([\d]+)/i;
+    $obj->{macaddress}=$1 if $_=~/!Chassis: Burned In MAC\s+:\s+([\w:]+)/i;
+    $obj->{memory}=$obj->{memory}+($1/1000) if $_=~/!Memory.*\s([\d]+)M/;
     push(@inventory,$_) if $_=~m/!(Inventory|Chassis).*/i;
   }
   for(@inventory){
     if($obj->{model} eq 'E300'){
-      $obj->{serial}=$1 if $_=~/!Chassis: Serial Number : (.*?)\s+/i;
+      $obj->{serial}=$1 if $_=~/!Chassis: Serial Number : ([\w]+)/i;
     }else{
       if($_=~/!Inventory: \*\s(.*)/i){
         my @ia=split(/\s+/,$1);
-        $obj->{serial}=$ia[7]
+        $obj->{serial}=$ia[7];
+        $obj->{serial}=$ia[2] if $obj->{serial} eq 'N/A';
       }
     }
   }
