@@ -74,7 +74,6 @@ sub getinterfaces {
       push(@{$errors},'NOMATCH:'.$1);
 		}
 	}
-
 	for(keys %int_hold){
 		my $interface=$_;
 		my $rawcfg=$int_hold{$interface};

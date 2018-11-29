@@ -11,7 +11,7 @@ sub new{
   $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
   my $interfaces=getinterfaces($config);
-  #$dev->{interfaces}=$interfaces;
+  $dev->{interfaces}=$interfaces;
   my $self = bless {device=>$dev}, $class;
 }
 
