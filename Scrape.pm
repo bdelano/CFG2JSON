@@ -5,6 +5,7 @@ use lib $FindBin::Bin;
 use JSON;
 use CFG2JSON::Force10;
 use CFG2JSON::Arista;
+use CFG2JSON::Opengear;
 use CFG2JSON::Cisco;
 use CFG2JSON::Juniper;
 use File::Slurp;
@@ -25,6 +26,8 @@ sub new{
     $dev=CFG2JSON::Arista->new(config=>$config);
   }elsif($vendor eq 'cisco'){
     $dev=CFG2JSON::Cisco->new(config=>$config);
+  }elsif($vendor eq 'opengear'){
+    $dev=CFG2JSON::Opengear->new(config=>$config);
   }elsif($vendor =~ /juniper/){
     $dev=CFG2JSON::Juniper->new(config=>$config);
   }else{
