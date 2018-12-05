@@ -31,8 +31,7 @@ sub new{
   }elsif($vendor =~ /juniper/){
     $dev=CFG2JSON::Juniper->new(config=>$config);
   }else{
-    print "No matching vendor found for $hostname!\n";
-    exit;
+    $dev->{error}="No matching vendor found for $hostname!";
   }
   $dev->{device}{mgmtip}=$mgmtip;
   $dev->{device}{sitename}=$sitename;
