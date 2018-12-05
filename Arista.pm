@@ -22,7 +22,7 @@ sub getinfo{
     $obj->{serial}=$1 if $_=~/!Serial number:\s+(.*)/i;
     $obj->{model}=$1 if $_=~/!Model: Arista\s+(.*)/i;
     $obj->{version}=$1 if $_=~/!Software image version:\s+(.*)/i;
-    if($_=~/!(.*\.swix)\s+([\d\.\/]+)\\\s+([\w]+,\s[\w]+)\s+.*/i){
+    if($_=~/!(.*)\.swix\s+([\d\.\/]+)\\\s+([\w]+,\s[\w]+)\s+.*/i){
       $obj->{patch}{file}=$1;
       $obj->{patch}{version}=$2;
       $obj->{patch}{status}=$3;
