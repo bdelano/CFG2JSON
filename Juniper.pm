@@ -14,6 +14,7 @@ sub new{
   $gbics=buildGbicHash($config,$dev->{model});
   #print Dumper $gbics;
   my $interfaces=getinterfaces($config);
+  #my $interfaces={};
   my $nats=getnats($config);
   $dev->{interfaces}=$interfaces;
   $dev->{nats}=$nats;
@@ -33,6 +34,7 @@ sub getinfo{
       $obj->{model}=$2;
     }
     $obj->{version}=$1 if $_=~/.*O\/S\s+Version\s(.*)\sby builder.*/i;
+    $obj->{version}=$1 if $_=~/# Junos: (.*)/;
   }
   return $obj;
 }

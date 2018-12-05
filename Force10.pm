@@ -12,7 +12,7 @@ sub new{
   my $config=$args->{config};
   $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
-  getinterfaces($config);
+  #getinterfaces($config);
   $dev->{interfaces}=$ints;
   $dev->{vlans}=$vlans;
   my $self = bless {device=>$dev}, $class;
@@ -23,9 +23,9 @@ sub getinfo{
   my $obj={};
   my @inventory=[];
   for(@config){
-    if($_=~/!Inventory: Software Version\s+:\s([\d\.]+)\((.*)\)/i){
+    if($_=~/!Inventory: Software Version\s+:\s([\d\.]+)(\((.*)\))?/i){
       $obj->{version}=$1;
-      $obj->{subversion}=$2;
+      $obj->{subversion}=$3;
     }
     $obj->{model}=$2 if $_=~/!Inventory: (System|Chassis) Type\s+:\s(.*?)\s+/i;
     $obj->{nics_num}=$obj->{nics_num}+$1 if $_=~/!Chassis: Num Ports\s+:\s+([\d]+)/i;
