@@ -59,6 +59,14 @@ sub getinterfaces{
         my $l=$_;
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'4'}) if $l=~/vrrp\s[\d]+\sip\s([\d]+\..*)/;
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'6'}) if $l=~/vrrp\s[\d]+\sip\s([\w]+:.*)/;
+        if($l =~ m/\s+switchport\saccess\svlan\s([\d]+.*)$/){
+          push(@{$ints->{$i}{vlans}},$1) if $l =~ m/\s+switchport\saccess\svlan\s([\d]+.*)$/;
+          $ints->{$i}{mode}='access';
+        }
+        if($l =~ /\sswitchport\strunk\sallowed\svlan\s(add\s)?([-,\d.*]+)$/){
+          $ints->{$i}=addGroups($ints->{$i},$2);
+          $ints->{$i}{mode}='tagged';
+        }
         $ints->{$i}{description}=$1 if $l=~/\s+description\s([!\"\'():,\@.&\w\s\/\-]+).*$/i;
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
@@ -102,6 +110,28 @@ sub buildGbicHash{
     }
   }
   return $gb;
+}
+
+sub addGroups{
+  my ($int,$info)=@_;
+  my @p_arr;
+  for(split(/,/,$info)){
+    my $pn=$_;
+    if($pn=~/([\d]+\/)?([\d]+)-([\d]+\/)?([\d]+)/){
+      my $i1s=$1;
+      my $i1p=$2;
+      my $i2s=$3;
+      my $i2p=$4;
+      for($i1p...$i2p){
+        my $p=$i1s.'/'.$_;
+        $p=$_ if !$i1s;
+        push(@{$int->{vlans}},$_)
+      }
+    }else{
+      push(@{$int->{vlans}},$pn)
+    }
+  }
+  return $int;
 }
 
 1

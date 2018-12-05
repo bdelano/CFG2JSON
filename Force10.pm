@@ -3,6 +3,8 @@ use strict;
 use Data::Dumper;
 use NetAddr::IP;
 my $gbics;
+my $ints;
+my $vlans;
 
 sub new{
   my $class = shift;
@@ -10,8 +12,9 @@ sub new{
   my $config=$args->{config};
   $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
-  my $interfaces=getinterfaces($config);
-  $dev->{interfaces}=$interfaces;
+  getinterfaces($config);
+  $dev->{interfaces}=$ints;
+  $dev->{vlans}=$vlans;
   my $self = bless {device=>$dev}, $class;
 }
 
@@ -46,7 +49,6 @@ sub getinfo{
 
 sub getinterfaces{
   my $c = shift;
-  my $ints;
   $c=~s/\n/<nl>/g;
   my @ints_arr=split(/<nl>i/,$c);
   shift @ints_arr;
@@ -55,8 +57,10 @@ sub getinterfaces{
     if($int=~/nterface (.*?)<nl>(.*?(shutdown|!<nl>router)).*/i){
       my $i=$1;
       my $rc=$2;
-      if($i=~m/vlan/i){
+      if($i=~m/Vlan ([\d]+)/i){
+        push(@{$ints->{$i}{vlans}},$1);
         $ints->{$i}{formfactor}='virtual';
+        $ints->{$i}{mode}='sub';
       }elsif($i=~m/port.*/i){
         $ints->{$i}{formfactor}='LAG';
       }else{
@@ -77,7 +81,6 @@ sub getinterfaces{
         }
       }
       $rc=~s/!<nl>router$//i;
-      $ints->{$i}{vlan}=$1 if $i=~/vlan ([\d]+)/i;
       for(split/<nl>/,$rc){
         my $l=$_;
         $ints->{$i}{description}=$1 if $l=~/description (.*)/i;
@@ -87,6 +90,11 @@ sub getinterfaces{
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'6'}) if $l=~/virtual-address\s([\w]+:[\w:]+)/;
         $ints->{$i}{vrf}=$1 if $l=~/ip vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~m/mtu\s([\d]+)/i;
+        addGroup($i,$1,$2,$3) if $l=~/(untagged|tagged) ([\w+-]+) (.*)/i;
+        if($i=~/Vlan ([\d]+)/){
+          my $vl=$1;
+          push(@{$vlans},{'vlan'=>$vl,'name'=>$1}) if $l=~/name\s(.*)/i;
+        }
         if($l=~m/\s+(port-channel\s[\d]+) mode active/){
           my $pci=$1;
           $pci=~s/port/Port/;
@@ -98,7 +106,17 @@ sub getinterfaces{
       $ints->{$i}{ipaddress}=updateBits($ints->{$i}{ipaddress});
     }
   }
-  return $ints
+  processInts();
+}
+sub processInts{
+  for(keys %{$ints}){
+    my $i=$_;
+    if($i=~/Vlan.*/){
+      if(@{$ints->{$i}{ipaddress}}<1){
+        delete $ints->{$i};
+      }
+    }
+  }
 }
 
 sub updateBits{
@@ -142,6 +160,31 @@ sub buildGbicHash{
     }
   }
   return $gb;
+}
+
+sub addGroup{
+  my ($int,$im,$ib,$info)=@_;
+  $im=~s/untagged/access/i;
+  my $vl=$int;
+  $vl=~s/Vlan //;
+  for(split(/,/,$info)){
+    my $pn=$_;
+    if($pn=~/([\d]+\/)?([\d]+)-([\d]+\/)?([\d]+)/){
+      my $i1s=$1;
+      my $i1p=$2;
+      my $i2s=$3;
+      my $i2p=$4;
+      for($i1p...$i2p){
+        my $p=$i1s.$_;
+        $p=$_ if !$i1s;
+        push(@{$ints->{$ib.' '.$p}{vlans}},$vl);
+        $ints->{$ib.' '.$p}{mode}=$im;
+      }
+    }else{
+      push(@{$ints->{$ib.' '.$pn}{vlans}},$vl);
+      $ints->{$ib.' '.$pn}{mode}=$im;
+    }
+  }
 }
 
 1

@@ -123,7 +123,6 @@ sub getinterfaces {
 		$rawcfg=~s/^<nl>//i;
 		$rawcfg=~s/<nl><nl>/<nl>/ig;
 		$rawcfg=~s/[^a-zA-Z0-9\s:_\-()<>{}\/\.]*//g;
-		my $vlanlist = '';
 		my $vlc=0;
 		my $intsec=0;
     my $v6intsec=0;
@@ -134,7 +133,14 @@ sub getinterfaces {
 			my $intdet=$_;
       $ints->{$interface}{description}=$1 if $intdet=~/.*description\s(.*)$/ig;
       $ints->{$interface}{mtu}=$1 if $intdet=~/.*mtu\s([\d]+)/ig;
-      $ints->{$interface}{vlan}=$1 if $intdet=~/.*vlan-id\s([\d]+)/ig;
+      if($intdet=~/.*vlan-id\s([\d]+)/ig){
+        push(@{$ints->{$interface}{vlans}},$1);
+        $ints->{$interface}{mode}='sub';
+      }
+      if ($intdet =~ m/.*vlan members\s(.*)/ig){
+        push(@{$ints->{$interface}{vlans}},$1);
+        $ints->{$interface}{mode}='tagged';
+      }
 			if($intdet=~/127\.0\.0\.1/){
 			}elsif($intdet =~ m/.*inet(6)? address\s([\w\.:]+)\/([\d]+)(.*)/ig){
         my ($version,$ip,$bits,$info)=($1,$2,$3,$4);

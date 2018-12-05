@@ -63,6 +63,7 @@ sub getinterfaces{
     my $int=$_;
     if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])\s?<nl>\s?(.*)/ig){
       my $i=$1;
+      my $rc=$2;
       if($i=~/(Vlan|Loop)/i){
         $ints->{$i}{formfactor}='virtual';
       }elsif($i=~/port-/i){
@@ -82,10 +83,8 @@ sub getinterfaces{
         }else{
           $ints->{$i}{formfactor}='physical';
         }
-
       }
       $ints->{$i}{mtu}='1500';
-      my $rc=$2;
       $rc=~s/!<nl>router$//i;
       for(split/<nl>/,$rc){
         my $l=$_;
@@ -93,6 +92,18 @@ sub getinterfaces{
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,bits=>$2,type=>'interface',version=>'4'}) if $l=~/\s+ip\saddress\s([\d]+\..*)\/([\d]+)$/;
         $ints->{$i}{vrf}=$1 if $l=~/\s+vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~/\s+mtu\s([\d]+)/i;
+        if($l=~/encapsulation dot1q vlan ([\d]+)/i){
+          push(@{$ints->{$i}{vlans}},$1);
+          $ints->{$i}{mode}='sub';
+        }
+        if($l =~ m/\s+switchport\saccess\svlan\s([\d]+.*)$/){
+          push(@{$ints->{$i}{vlans}},$1);
+          $ints->{$i}{mode}='access';
+        }
+        if($l =~ /\sswitchport\strunk\sallowed\svlan\s(add\s)?([-,\d.*]+)$/){
+          $ints->{$i}=addGroups($ints->{$i},$2);
+          $ints->{$i}{mode}='tagged';
+        }
         if($l=~/\s+channel-group\s([\d]+)\smode active/){
           $ints->{$i}{parent}='Port-Channel'.$1;
           push(@{$ints->{'Port-Channel'.$1}{children}},$i);
@@ -101,6 +112,28 @@ sub getinterfaces{
     }
   }
   return $ints;
+}
+
+sub addGroups{
+  my ($int,$info)=@_;
+  my @p_arr;
+  for(split(/,/,$info)){
+    my $pn=$_;
+    if($pn=~/([\d]+\/)?([\d]+)-([\d]+\/)?([\d]+)/){
+      my $i1s=$1;
+      my $i1p=$2;
+      my $i2s=$3;
+      my $i2p=$4;
+      for($i1p...$i2p){
+        my $p=$i1s.'/'.$_;
+        $p=$_ if !$i1s;
+        push(@{$int->{vlans}},$_)
+      }
+    }else{
+      push(@{$int->{vlans}},$pn)
+    }
+  }
+  return $int;
 }
 
 1
