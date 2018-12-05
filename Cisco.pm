@@ -10,7 +10,7 @@ sub new{
   my $config=$args->{config};
   my $dev=getinfo($config);
   $gbics=buildGbicHash($config);
-  print Dumper $gbics;
+  #print Dumper $gbics;
   my $interfaces=getinterfaces($config);
   #my $interfaces={};
   $dev->{interfaces}=$interfaces;
@@ -23,7 +23,7 @@ sub getinfo{
   for(@config){
     $obj->{serial}=$1 if $_=~/!Serial Number:\s+(.*)/i;
     $obj->{model}=$1 if $_=~/!Model number\s+:\s+(.*)/i;
-    $obj->{version}=$1 if $_=~/!BOOTLDR: Version \s+(.*)/i;
+    $obj->{version}=$1 if $_=~/!Image: Software:\s+.*,\s(.*),.*/i;
   }
   return $obj;
 }
