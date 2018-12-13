@@ -12,7 +12,7 @@ sub new{
   my $config=$args->{config};
   $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
-  #getinterfaces($config);
+  getinterfaces($config);
   $dev->{interfaces}=$ints;
   $dev->{vlans}=$vlans;
   my $self = bless {device=>$dev}, $class;

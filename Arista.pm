@@ -71,6 +71,7 @@ sub getinterfaces{
     if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])\s?<nl>\s?(.*)/ig){
       my $i=$1;
       my $rc=$2;
+      push(@{$ints->{$i}{vlans}},$1) if $i=~/Vlan([\d]+)/;
       if($i=~/(Vlan|Loop)/i){
         $ints->{$i}{formfactor}='virtual';
       }elsif($i=~/port-/i){
