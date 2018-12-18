@@ -40,7 +40,7 @@ sub getinfo{
       if($_=~/!Inventory: \*\s(.*)/i){
         my @ia=split(/\s+/,$1);
         $obj->{serial}=$ia[7];
-        $obj->{serial}=$ia[2] if $obj->{serial} eq 'N/A';
+        $obj->{serial}=$ia[2] if $obj->{serial} eq 'N/A' || !$obj->{serial};
       }
     }
   }
@@ -90,7 +90,7 @@ sub getinterfaces{
         push(@{$ints->{$i}{ipaddress}},{ip=>$1,type=>'vrrp',version=>'6'}) if $l=~/virtual-address\s([\w]+:[\w:]+)/;
         $ints->{$i}{vrf}=$1 if $l=~/ip vrf forwarding (.*)/i;
         $ints->{$i}{mtu}=$1 if $l=~m/mtu\s([\d]+)/i;
-        addGroup($i,$1,$2,$3) if $l=~/(untagged|tagged) ([\w+-]+) (.*)/i;
+        addGroup($i,$1,$2,$3) if $l=~/(untagged|tagged) ([\w+-]+) ([\d\/]+.*)/i;
         if($i=~/Vlan ([\d]+)/){
           my $vl=$1;
           push(@{$vlans},{'vlan'=>$vl,'name'=>$1}) if $l=~/name\s(.*)/i;
@@ -176,13 +176,14 @@ sub addGroup{
       my $i2p=$4;
       for($i1p...$i2p){
         my $p=$i1s.$_;
-        $p=$_ if !$i1s;
-        push(@{$ints->{$ib.' '.$p}{vlans}},$vl);
-        $ints->{$ib.' '.$p}{mode}=$im;
+        my $i=$ib.' '.$p;
+        push(@{$ints->{$i}{vlans}},$vl);
+        $ints->{$i}{mode}=$im;
       }
     }else{
-      push(@{$ints->{$ib.' '.$pn}{vlans}},$vl);
-      $ints->{$ib.' '.$pn}{mode}=$im;
+      my $i=$ib.' '.$pn;
+      push(@{$ints->{$i}{vlans}},$vl);
+      $ints->{$i}{mode}=$im;
     }
   }
 }
