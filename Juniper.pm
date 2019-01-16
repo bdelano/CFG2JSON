@@ -195,6 +195,7 @@ sub getinterfaces {
       }
     }
   }
+  $ints->{console}{formfactor}='NONE';
 }
 
 sub findlocint{

@@ -77,6 +77,7 @@ sub getinterfaces{
       }elsif($i=~/port-/i){
         $ints->{$i}{formfactor}='lag';
       }elsif($i=~/.*\.[\d]+$/){
+        #print "match:$i\n";
         $ints->{$i}{formfactor}='virtual';
       }else{
         my $bi=$i;
@@ -119,6 +120,7 @@ sub getinterfaces{
       }
     }
   }
+  $ints->{console}{formfactor}='NONE';
   return $ints;
 }
 

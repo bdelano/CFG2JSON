@@ -80,6 +80,7 @@ sub getinterfaces{
       }
     }
   }
+  $ints->{console}{formfactor}='NONE';
   return $ints
 }
 

@@ -117,6 +117,7 @@ sub processInts{
       }
     }
   }
+  $ints->{console}{formfactor}='NONE';
 }
 
 sub updateBits{
@@ -165,23 +166,26 @@ sub buildGbicHash{
 sub addGroup{
   my ($int,$im,$ib,$info)=@_;
   $im=~s/untagged/access/i;
+  my $i1s;
   my $vl=$int;
   $vl=~s/Vlan //;
   for(split(/,/,$info)){
     my $pn=$_;
-    if($pn=~/([\d]+\/)?([\d]+)-([\d]+\/)?([\d]+)/){
-      my $i1s=$1;
+    if($pn=~/([\d\/]+\/)?([\d]+)-([\d\/]+\/)?([\d]+)$/){
+      $i1s=$1 if $1;
       my $i1p=$2;
       my $i2s=$3;
       my $i2p=$4;
       for($i1p...$i2p){
         my $p=$i1s.$_;
         my $i=$ib.' '.$p;
+        #print "vl:$vl rx: $i\n";
         push(@{$ints->{$i}{vlans}},$vl);
         $ints->{$i}{mode}=$im;
       }
     }else{
-      my $i=$ib.' '.$pn;
+      my $i=$ib.' '.$i1s.$pn;
+      #print "vl:$vl base $i\n";
       push(@{$ints->{$i}{vlans}},$vl);
       $ints->{$i}{mode}=$im;
     }
