@@ -184,8 +184,10 @@ sub addGroup{
         $ints->{$i}{mode}=$im;
       }
     }else{
+
       my $i=$ib.' '.$i1s.$pn;
-      #print "vl:$vl base $i\n";
+      $i1s=$1 if $pn=~/([\d\/]+\/)?([\d]+)/i && !$i1s; #set for additional csv values
+      #print "ib:$ib i1s:$i1s pn:$pn vl:$vl base $i\n";
       push(@{$ints->{$i}{vlans}},$vl);
       $ints->{$i}{mode}=$im;
     }
