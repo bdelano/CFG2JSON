@@ -101,7 +101,7 @@ sub getDeviceRole{
   }elsif($l=~/.*(bigswitch|bs4048|bsmf|bmf|\-BS).*/i){
     $req='BigSwitch';
   }elsif($l=~/.*(admin|mgt|mgg).*/i){
-    $req='Admin';
+    $req='NW Admin';
   }elsif($l=~/.*(dist).*/i){
     $req='Distribution';
   }elsif($l=~/.*(core).*/i){
@@ -111,7 +111,7 @@ sub getDeviceRole{
   }elsif($l=~/.*(logr|lr[12])/){
     $req='LogRythm';
   }elsif($l=~/.*-(con|oob)/i){
-    $req='Console';
+    $req='NW Console';
   }elsif($l=~/.*(kvm|dns|tac|opennms|cacti|netopsinfo|noctool|nftracker|ns[12]\.).*/i){
     $req='Server';
   }elsif($l=~/.*mx204.*/){
