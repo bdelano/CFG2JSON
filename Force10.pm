@@ -187,6 +187,7 @@ sub addGroup{
       my $i;
       if($pn=~/([\d\/]+\/)?([\d]+)/i){
         $i1s=$1 if !$i1s;
+        $pn=$i1s.$pn if !$1;
         $i=$ib.' '.$pn;
       }
       #print "ib:$ib i1s:$i1s pn:$pn vl:$vl base $i\n";
