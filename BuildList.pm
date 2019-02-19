@@ -20,8 +20,9 @@ sub _buildList{
     my $cust='default';
     $cust=$custhash->{$site} if $custhash->{$site};
     push(@{$sitelist->{$cust}},{sitename=>$site,rancidpath=>$path});
-    for(split("\n",`ls -1 $path/$_/configs/`)){
-      push(@{$devlist->{$cust}},{sitename=>$site,rancidpath=>$path,hostname=>$_})
+    for(split("\n",`cat $path/$_/router.db`)){
+      my $hn=lc($1) if $_=~/(.*?);.*/i;
+      push(@{$devlist->{$cust}},{sitename=>$site,rancidpath=>$path,hostname=>$hn})
     }
   }
   return ($devlist,$sitelist);
