@@ -30,16 +30,21 @@ sub getinfo{
 
 sub getinterfaces{
   my @config=split("\n",$_[0]);
-  my $ints;
+  my ($holdints,$ints);
   for(@config){
     if($_=~/config\.ports\.(port[\d]+)\.([\w]+)\s(.*)/i){
       my ($int,$key,$value)=($1,$2,$3);
       $int=~s/port/p/;
-      $ints->{$int}{$key}=$value
+      $holdints->{$int}{$key}=$value
     }
   }
-  for(keys %{$ints}){
-    $ints->{$_}{formfactor}='NONE';
+  #print Dumper $holdints;
+  for(keys %{$holdints}){
+    my $label=$holdints->{$_}{label};
+    $label=~s/-new ceres//i;
+    my $i=$_.':'.$label;
+    $ints->{$i}{formfactor}='NONE';
+    $ints->{$i}{label}=$label;
   }
   return $ints;
 
