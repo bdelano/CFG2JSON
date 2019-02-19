@@ -5,6 +5,7 @@ use lib $FindBin::Bin;
 use JSON;
 use CFG2JSON::Force10;
 use CFG2JSON::Arista;
+use CFG2JSON::Arbor;
 use CFG2JSON::Opengear;
 use CFG2JSON::Cisco;
 use CFG2JSON::Juniper;
@@ -30,6 +31,8 @@ sub new{
     $dev=CFG2JSON::Opengear->new(config=>$config);
   }elsif($vendor =~ /juniper/){
     $dev=CFG2JSON::Juniper->new(config=>$config);
+  }elsif($vendor eq 'arbor'){
+    $dev=CFG2JSON::Arbor->new(config=>$config);
   }else{
     $dev->{error}="No matching vendor found for $hostname!";
   }
