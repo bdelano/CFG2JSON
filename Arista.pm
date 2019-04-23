@@ -22,6 +22,9 @@ sub getinfo{
     $obj->{serial}=$1 if $_=~/!Serial number:\s+(.*)/i;
     $obj->{model}=$1 if $_=~/!Model: Arista\s+(.*)/i;
     $obj->{version}=$1 if $_=~/!Software image version:\s+(.*)/i;
+    push(@{$obj->{syslog}},$2) if $_=~/logging( vrf MGMT)? host ([\d\.]+)/i;
+    push(@{$obj->{snmp}},$1) if $_=~/snmp-server host ([\d\.]+) version/i;
+    push(@{$obj->{tacacs}},$1) if $_=~/!tacacs-server host ([\d\.]+)/i;
     if($_=~/!(.*)\.swix\s+([\d\.\/]+)\\\s+([\w]+),\s([\w]+)\s+.*/i){
       my $patch;
       $patch->{file}=$1;
@@ -71,6 +74,7 @@ sub getinterfaces{
     if($int=~/<nl>interface\s+([fskpmvlgibrtortchanel\d\-\/\.]+[\d])\s?<nl>\s?(.*)/ig){
       my $i=$1;
       my $rc=$2;
+      $ints->{$i}{rawconfig}=$rc;
       push(@{$ints->{$i}{vlans}},$1) if $i=~/Vlan([\d]+)/;
       if($i=~/(Vlan|Loop)/i){
         $ints->{$i}{formfactor}='virtual';

@@ -30,7 +30,11 @@ sub getinfo{
   my @config=split("\n",$_[0]);
   my $obj={};
   for(@config){
-    if($_=~m/# Chassis\s+([\w]+)\s+([\w]+)/i){
+    my $l=$_;
+    push(@{$obj->{syslog}},$1) if $l=~/set system syslog host (.*) any warning/i;
+    push(@{$obj->{snmp}},$1) if $l=~/set snmp trap-group .* targets ([\d\.]+)/i;
+    push(@{$obj->{tacacs}},$1) if $l=~/set system tacplus-server ([\d\.]+) source-address/i;
+    if($l=~m/# Chassis\s+([\w]+)\s+([\w]+)/i){
       if($obj->{serial}){
         $obj->{serial}=$obj->{serial}.','.$1
       }else{
@@ -38,8 +42,8 @@ sub getinfo{
       }
       $obj->{model}=$2;
     }
-    $obj->{version}=$1 if $_=~/.*O\/S\s+Version\s(.*)\sby builder.*/i;
-    $obj->{version}=$1 if $_=~/# Junos: (.*)/;
+    $obj->{version}=$1 if $l=~/.*O\/S\s+Version\s(.*)\sby builder.*/i;
+    $obj->{version}=$1 if $l=~/# Junos: (.*)/;
   }
   return $obj;
 }
@@ -82,7 +86,7 @@ sub getinterfaces {
 	}
 	for(keys %int_hold){
 		my $interface=$_;
-		my $rawcfg=$int_hold{$interface};
+		my $rc=$int_hold{$interface};
     if($interface=~/\./i){
 			my $ti=$interface;
 			$ti=~s/\.0$//ig;
@@ -92,7 +96,7 @@ sub getinterfaces {
 	      }elsif($al_hash{$_}){
 	      }else{
 	      	$al_hash{$_}='1';
-	      	$rawcfg.='<nl>' . $_;
+	      	$rc.='<nl>' . $_;
 	      }
       }
       for(grep(/$ti$/,@cfglines)){
@@ -100,7 +104,7 @@ sub getinterfaces {
         }elsif($al_hash{$_}){
         }else{
         	$al_hash{$_}='1';
-        	$rawcfg.='<nl>' . $_;
+        	$rc.='<nl>' . $_;
         }
       }
 			my ($bi,$unit)=split(/\./,$ti);
@@ -110,7 +114,7 @@ sub getinterfaces {
 					}elsif($al_hash{$_}){
 					}else{
 						$al_hash{$_}='1';
-						$rawcfg.='<nl>' . $_;
+						$rc.='<nl>' . $_;
 					}
 				}
 			}
@@ -120,22 +124,23 @@ sub getinterfaces {
 					}elsif($al_hash{$_}){
 					}else{
 						$al_hash{$_}='1';
-						$rawcfg.='<nl>' . $_;
+						$rc.='<nl>' . $_;
 					}
 				}
 			}
 		}
 
-		$rawcfg=~s/^<nl>//i;
-		$rawcfg=~s/<nl><nl>/<nl>/ig;
-		$rawcfg=~s/[^a-zA-Z0-9\s:_\-()<>{}\/\.]*//g;
+		$rc=~s/^<nl>//i;
+		$rc=~s/<nl><nl>/<nl>/ig;
+		$rc=~s/[^a-zA-Z0-9\s:_\-()<>{}\/\.]*//g;
 		my $vlc=0;
 		my $intsec=0;
     my $v6intsec=0;
 		my %ipc_hash;
     $ints->{$interface}{vrf}=$riint->{$interface} if $riint->{$interface};
     $ints->{$interface}{mtu}='1500';
-		for(split(/<nl>/,$rawcfg)){
+    $ints->{$interface}{rawconfig}=$rc;
+		for(split(/<nl>/,$rc)){
 			my $intdet=$_;
       $ints->{$interface}{description}=$1 if $intdet=~/.*description\s(.*)$/ig;
       $ints->{$interface}{mtu}=$1 if $intdet=~/.*mtu\s([\d]+)/ig;

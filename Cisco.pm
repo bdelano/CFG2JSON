@@ -21,6 +21,9 @@ sub getinfo{
   my @config=split("\n",$_[0]);
   my $obj={};
   for(@config){
+    push(@{$obj->{syslog}},$2) if $_=~/logging( vrf MGMT)? host ([\d\.]+)/i;
+    push(@{$obj->{snmp}},$1) if $_=~/snmp-server host ([\d\.]+) version/i;
+    push(@{$obj->{tacacs}},$1) if $_=~/tacacs-server host ([\d\.]+)/i;
     $obj->{serial}=$1 if $_=~/!Serial Number:\s+(.*)/i;
     $obj->{model}=$1 if $_=~/!Model number\s+:\s+(.*)/i;
     $obj->{version}=$1 if $_=~/!Image: Software:\s+.*,\s(.*),.*/i;
@@ -43,6 +46,7 @@ sub getinterfaces{
       my $rc=$2;
       $ints->{$i}{mtu}='1500';
       $rc=~s/!<nl>router$//i;
+      $ints->{$i}{rawconfig}=$rc;
       if($i=~/^(vlan|port).*/i){
         $ints->{$i}{formfactor}='virtual';
       }elsif($gbics->{lc($i)}){

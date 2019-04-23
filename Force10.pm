@@ -23,6 +23,9 @@ sub getinfo{
   my $obj={};
   my @inventory=[];
   for(@config){
+    push(@{$obj->{syslog}},$2) if $_=~/logging( vrf MGMT)? ([\d\.]+)/i;
+    push(@{$obj->{snmp}},$1) if $_=~/snmp-server host ([\d\.]+) /i;
+    push(@{$obj->{tacacs}},$1) if $_=~/tacacs-server host ([\d\.]+)/i;
     if($_=~/!Inventory: Software Version\s+:\s([\d\.]+)(\((.*)\))?/i){
       $obj->{version}=$1;
       $obj->{subversion}=$3;
@@ -57,6 +60,7 @@ sub getinterfaces{
     if($int=~/nterface (.*?)<nl>(.*?(shutdown|!<nl>router)).*/i){
       my $i=$1;
       my $rc=$2;
+      $ints->{$i}{rawconfig}=$rc;
       if($i=~m/Vlan ([\d]+)/i){
         push(@{$ints->{$i}{vlans}},$1);
         $ints->{$i}{formfactor}='virtual';
