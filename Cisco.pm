@@ -27,6 +27,7 @@ sub getinfo{
     $obj->{serial}=$1 if $_=~/!Serial Number:\s+(.*)/i;
     $obj->{model}=$1 if $_=~/!Model number\s+:\s+(.*)/i;
     $obj->{version}=$1 if $_=~/!Image: Software:\s+.*,\s(.*),.*/i;
+    $obj->{taaccounting}=$1 if $_=~/aaa accounting commands (.*)/i;
   }
   return $obj;
 }

@@ -34,6 +34,7 @@ sub getinfo{
     push(@{$obj->{syslog}},$1) if $l=~/set system syslog host (.*) any warning/i;
     push(@{$obj->{snmp}},$1) if $l=~/set snmp trap-group .* targets ([\d\.]+)/i;
     push(@{$obj->{tacacs}},$1) if $l=~/set system tacplus-server ([\d\.]+) source-address/i;
+    $obj->{taaccounting}=$1 if $_=~/set system accounting destination (.*)/i;
     if($l=~m/# Chassis\s+([\w]+)\s+([\w]+)/i){
       if($obj->{serial}){
         $obj->{serial}=$obj->{serial}.','.$1

@@ -34,6 +34,7 @@ sub getinfo{
     $obj->{nics_num}=$obj->{nics_num}+$1 if $_=~/!Chassis: Num Ports\s+:\s+([\d]+)/i;
     $obj->{macaddress}=$1 if $_=~/!Chassis: Burned In MAC\s+:\s+([\w:]+)/i;
     $obj->{memory}=$obj->{memory}+($1/1000) if $_=~/!Memory.*\s([\d]+)M/;
+    $obj->{taaccounting}=$1 if $_=~/aaa accounting commands (.*)/i;
     push(@inventory,$_) if $_=~m/!(Inventory|Chassis).*/i;
   }
   for(@inventory){
