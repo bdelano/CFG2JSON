@@ -24,7 +24,7 @@ sub getinfo{
     $obj->{version}=$1 if $_=~/!Software image version:\s+(.*)/i;
     $obj->{taaccounting}=$1 if $_=~/aaa accounting commands (.*)/i;
     push(@{$obj->{syslog}},$2) if $_=~/logging( vrf MGMT)? host ([\d\.]+)/i;
-    push(@{$obj->{snmp}},$1) if $_=~/snmp-server host ([\d\.]+) version/i;
+    push(@{$obj->{snmp}},$1) if $_=~/snmp-server host ([\d\.]+)( vrf MGMT)? version/i;
     push(@{$obj->{tacacs}},$1) if $_=~/!tacacs-server host ([\d\.]+)/i;
     if($_=~/!(.*)\.swix\s+([\d\.\/]+)\\\s+([\w]+),\s([\w]+)\s+.*/i){
       my $patch;
