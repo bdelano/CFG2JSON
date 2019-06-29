@@ -7,6 +7,7 @@ my $ints;
 my $vlans;
 
 sub new{
+  ($ints,$vlans,$gbics)=((),(),());
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};

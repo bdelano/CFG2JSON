@@ -5,6 +5,7 @@ use Data::Dumper;
 my $gbics;
 
 sub new{
+  my $gbics=();
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};

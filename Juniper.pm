@@ -11,6 +11,7 @@ my $pools; #holds net pool information
 my $addrbook; #holds global address book for prefix names
 
 sub new{
+  ($ints,$riint,$gbics,$nats,$errors,$pools,$addrbook)=((),(),(),(),(),(),());
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};
