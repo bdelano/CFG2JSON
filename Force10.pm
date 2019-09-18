@@ -2,18 +2,14 @@ package CFG2JSON::Force10;
 use strict;
 use Data::Dumper;
 use NetAddr::IP;
-my $gbics;
-my $ints;
-my $vlans;
 
 sub new{
-  ($ints,$vlans,$gbics)=((),(),());
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};
-  $gbics=buildGbicHash($config);
+  my $gbics=buildGbicHash($config);
   my $dev=getinfo($config);
-  getinterfaces($config);
+  my ($ints,$vlans)=getinterfaces($config,$gbics);
   $dev->{interfaces}=$ints;
   $dev->{vlans}=$vlans;
   my $self = bless {device=>$dev}, $class;
@@ -53,6 +49,8 @@ sub getinfo{
 }
 
 sub getinterfaces{
+  my ($c,$gbics)=@_;
+  my ($ints,$vlans);
   my $c = shift;
   $c=~s/\n/<nl>/g;
   my @ints_arr=split(/<nl>i/,$c);
@@ -113,18 +111,54 @@ sub getinterfaces{
     }
   }
   processInts();
-}
-sub processInts{
-  for(keys %{$ints}){
-    my $i=$_;
-    if($i=~/Vlan.*/){
-      if(@{$ints->{$i}{ipaddress}}<1){
-        delete $ints->{$i};
+  return ($ints,$vlans);
+  #subs
+  sub processInts{
+    for(keys %{$ints}){
+      my $i=$_;
+      if($i=~/Vlan.*/){
+        if(@{$ints->{$i}{ipaddress}}<1){
+          delete $ints->{$i};
+        }
+      }
+    }
+    $ints->{console}{formfactor}='NONE';
+  }
+  sub addGroup{
+    my ($int,$im,$ib,$info)=@_;
+    $im=~s/untagged/access/i;
+    my $i1s;
+    my $vl=$int;
+    $vl=~s/Vlan //;
+    for(split(/,/,$info)){
+      my $pn=$_;
+      if($pn=~/([\d\/]+\/)?([\d]+)-([\d\/]+\/)?([\d]+)$/){
+        $i1s=$1 if $1;
+        my $i1p=$2;
+        my $i2s=$3;
+        my $i2p=$4;
+        for($i1p...$i2p){
+          my $p=$i1s.$_;
+          my $i=$ib.' '.$p;
+          #print "vl:$vl rx: $i\n";
+          push(@{$ints->{$i}{vlans}},$vl);
+          $ints->{$i}{mode}=$im;
+        }
+      }else{
+        my $i;
+        if($pn=~/([\d\/]+\/)?([\d]+)/i){
+          $i1s=$1 if !$i1s;
+          $pn=$i1s.$pn if !$1;
+          $i=$ib.' '.$pn;
+        }
+        #print "ib:$ib i1s:$i1s pn:$pn vl:$vl base $i\n";
+        push(@{$ints->{$i}{vlans}},$vl);
+        $ints->{$i}{mode}=$im;
       }
     }
   }
-  $ints->{console}{formfactor}='NONE';
 }
+
 
 sub updateBits{
   my $ips = shift;
@@ -167,40 +201,6 @@ sub buildGbicHash{
     }
   }
   return $gb;
-}
-
-sub addGroup{
-  my ($int,$im,$ib,$info)=@_;
-  $im=~s/untagged/access/i;
-  my $i1s;
-  my $vl=$int;
-  $vl=~s/Vlan //;
-  for(split(/,/,$info)){
-    my $pn=$_;
-    if($pn=~/([\d\/]+\/)?([\d]+)-([\d\/]+\/)?([\d]+)$/){
-      $i1s=$1 if $1;
-      my $i1p=$2;
-      my $i2s=$3;
-      my $i2p=$4;
-      for($i1p...$i2p){
-        my $p=$i1s.$_;
-        my $i=$ib.' '.$p;
-        #print "vl:$vl rx: $i\n";
-        push(@{$ints->{$i}{vlans}},$vl);
-        $ints->{$i}{mode}=$im;
-      }
-    }else{
-      my $i;
-      if($pn=~/([\d\/]+\/)?([\d]+)/i){
-        $i1s=$1 if !$i1s;
-        $pn=$i1s.$pn if !$1;
-        $i=$ib.' '.$pn;
-      }
-      #print "ib:$ib i1s:$i1s pn:$pn vl:$vl base $i\n";
-      push(@{$ints->{$i}{vlans}},$vl);
-      $ints->{$i}{mode}=$im;
-    }
-  }
 }
 
 1
