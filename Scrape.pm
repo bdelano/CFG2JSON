@@ -85,9 +85,9 @@ sub getDeviceRole{
     $req='Leaf'
   }elsif($l=~/-spn([\d]+)?-/){
     $req='Spine'
-  }elsif($l=~/.*-dc$/i){
+  }elsif($l=~/.*(drc|-dc)$/i){
     $req='DirectConnect';
-  }elsif($l=~/.*-(dc|mx480|service|ss|edg)/i){
+  }elsif($l=~/.*-(dc|mx480|service|ss|edg|svc|bro)/i){
     $req='Edge';
   }elsif($l=~/pdu/i){
     $req='PDU';
@@ -97,7 +97,7 @@ sub getDeviceRole{
     $req='SDX';
   }elsif($l=~/WAF/i){
     $req='WAF';
-  }elsif($l=~/srx/i){
+  }elsif($l=~/(srx|afw|sfw)/i){
     $req='Firewall';
   }elsif($l=~/ids/i){
     $req='IDS';
@@ -105,7 +105,7 @@ sub getDeviceRole{
     $req='BigSwitch';
   }elsif($l=~/.*(admin|mgt|mgg).*/i){
     $req='NW Admin';
-  }elsif($l=~/.*(dist).*/i){
+  }elsif($l=~/.*(dist|dst).*/i){
     $req='Distribution';
   }elsif($l=~/.*(core).*/i){
     $req='Core';
