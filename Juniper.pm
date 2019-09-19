@@ -2,28 +2,21 @@ package CFG2JSON::Juniper;
 use strict;
 use Data::Dumper;
 use NetAddr::IP;
-my $ints;
-my $riint;
-my $gbics;
-my $nats;
-my $errors;
-my $pools; #holds net pool information
-my $addrbook; #holds global address book for prefix names
 
 sub new{
-  ($ints,$riint,$gbics,$nats,$errors,$pools,$addrbook)=((),(),(),(),(),(),());
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};
-  sortris($config); #build hash of vrf interfaces
   my $dev=getinfo($config);
-  buildGbicHash($config,$dev->{model});
+  my $gbics=buildGbicHash($config,$dev->{model});
   #print Dumper $gbics;
-  getinterfaces($config);
+  my $ints=getinterfaces($config,$gbics);
   #my $interfaces={};
-  getnats($config);
+  my $nats=getnats($config,$ints);
+  my $statics=getstatics($config);
   $dev->{interfaces}=$ints;
   $dev->{nats}=$nats if $nats;
+  $dev->{statics}=$statics if $statics;
   my $self = bless {device=>$dev}, $class;
 }
 
@@ -51,7 +44,9 @@ sub getinfo{
 }
 
 sub getinterfaces {
-  my $c = shift;
+  my ($c,$gbics)=@_;
+  my ($ints,$riint,$errors);
+  sortris();
   $c=~s/\n/<nl>/g;
   my @cfglines;
 	my @cfglines=split(/<nl>/,$c);
@@ -203,51 +198,26 @@ sub getinterfaces {
     }
   }
   $ints->{console}{formfactor}='NONE';
-}
-
-sub findlocint{
-  my $ip=shift;
-  my $nip=new NetAddr::IP $ip;
-  for(keys %{$ints}){
-    my $i=$_;
-    if($ints->{$i}{ipaddress}){
-      for(@{$ints->{$i}{ipaddress}}){
-        my $ipinfo=$_;
-        my $n=new NetAddr::IP $ipinfo->{ip}.'/'.$ipinfo->{bits};
-        if($n->contains($nip)){
-          return {'int'=>$i,'bits'=>$ipinfo->{bits},'ip'=>$ipinfo->{ip}};
-        }
+  #internal subs
+  sub sortris {
+    my @infolines = grep(/set routing-instance.*interface.*/,@cfglines);
+    my $infoline;
+    foreach $infoline(@infolines){
+      $infoline =~ s/\s\s//ig;
+      if($infoline =~ m/set\srouting-instances\s([\w\-\_]+)\sinterface\s([\w\-\/\.]+)/ig){
+        my $ri = $1;
+        my $interface = $2;
+        $riint->{$interface} = $ri;          #print "NOMATCHRI: $infoline \n";
       }
     }
   }
-  return '';
-}
-
-sub listfromto{
-  my $str=$_[0];
-  my $retl;
-  if($str=~/ to /){
-    my ($s,$e)=split(" to ",$str);
-    if($s eq $e){
-      push(@{$retl},getIPinfo($s));
-    }else{
-      my ($sb,$slo,$sbits)=($1,$2,$3) if $s=~/([\.\d]+)\.([\d]+)(\/[\d]+)/;
-      my ($eb,$elo,$ebits)=($1,$2,$3) if $e=~/([\.\d]+)\.([\d]+)(\/[\d]+)/;
-      if ($sb eq $eb){
-        for($slo...$elo){
-          push(@{$retl},getIPinfo($sb.'.'.$_.$sbits));
-        }
-      }
-    }
-  }else{
-    push(@{$retl},getIPinfo($str))
-  }
-  return $retl;
+  return $ints;
 }
 
 sub getnats{
-  my $c = shift;
+  my ($c,$ints)=@_;
   $c=~s/\n/<nl>/g;
+  my ($nats,$addrbook,$pools);
   for(split('<nl>',$c)){
     if($_=~/set security address-book global address (.*)\s([\d\.\/]+)/i){
 			$addrbook->{$1}=$2;
@@ -284,58 +254,85 @@ sub getnats{
       }
     }
   }
+  #addsubs
+  sub getIPinfo{
+    my $addr=shift;
+    my $name;
+    if($addrbook->{$addr}){
+      $name=$addr;
+      $addr=$addrbook->{$addr};
+    }
+    my $obj->{address}=$addr;
+    $obj->{name}=$name if $name;
+    if($addr=~/^([\d\.]+)\/([\d]+)$/){
+      $obj->{version}='v4';
+      my ($ip,$bits)=($1,$2);
+      $obj->{ip}=$ip;
+      $obj->{bits}=$bits;
+      my $locint;
+      $locint=findlocint($addr) if $bits > 24;
+      $obj->{locint}=findlocint($addr) if $locint;
+    }elsif($addr=~m/^([\w:])+\/([\d]+)/){
+      $obj->{version}='v6';
+      my ($ip,$bits)=($1,$2);
+      $obj->{ip}=$ip;
+      $obj->{bits}=$bits;
+      my $locint;
+      $locint=findlocint($addr) if $bits > 92;
+      $obj->{locint}=findlocint($addr) if $locint;
+    }else{
+      $obj->{address}='';
+    }
+    return $obj;
+  }
+  sub listfromto{
+    my $str=$_[0];
+    my $retl;
+    if($str=~/ to /){
+      my ($s,$e)=split(" to ",$str);
+      if($s eq $e){
+        push(@{$retl},getIPinfo($s));
+      }else{
+        my ($sb,$slo,$sbits)=($1,$2,$3) if $s=~/([\.\d]+)\.([\d]+)(\/[\d]+)/;
+        my ($eb,$elo,$ebits)=($1,$2,$3) if $e=~/([\.\d]+)\.([\d]+)(\/[\d]+)/;
+        if ($sb eq $eb){
+          for($slo...$elo){
+            push(@{$retl},getIPinfo($sb.'.'.$_.$sbits));
+          }
+        }
+      }
+    }else{
+      push(@{$retl},getIPinfo($str))
+    }
+    return $retl;
+  }
+  sub findlocint{
+    my $ip=shift;
+    my $nip=new NetAddr::IP $ip;
+    for(keys %{$ints}){
+      my $i=$_;
+      if($ints->{$i}{ipaddress}){
+        for(@{$ints->{$i}{ipaddress}}){
+          my $ipinfo=$_;
+          my $n=new NetAddr::IP $ipinfo->{ip}.'/'.$ipinfo->{bits};
+          if($n->contains($nip)){
+            return {'int'=>$i,'bits'=>$ipinfo->{bits},'ip'=>$ipinfo->{ip}};
+          }
+        }
+      }
+    }
+    return '';
+  }
+  #return nats object
+  return $nats;
 }
 
-sub getIPinfo{
-  my $addr=shift;
-  my $name;
-  if($addrbook->{$addr}){
-    $name=$addr;
-    $addr=$addrbook->{$addr};
-  }
-  my $obj->{address}=$addr;
-  $obj->{name}=$name if $name;
-  if($addr=~/^([\d\.]+)\/([\d]+)$/){
-    $obj->{version}='v4';
-    my ($ip,$bits)=($1,$2);
-    $obj->{ip}=$ip;
-    $obj->{bits}=$bits;
-    my $locint;
-    $locint=findlocint($addr) if $bits > 24;
-    $obj->{locint}=findlocint($addr) if $locint;
-  }elsif($addr=~m/^([\w:])+\/([\d]+)/){
-    $obj->{version}='v6';
-    my ($ip,$bits)=($1,$2);
-    $obj->{ip}=$ip;
-    $obj->{bits}=$bits;
-    my $locint;
-    $locint=findlocint($addr) if $bits > 92;
-    $obj->{locint}=findlocint($addr) if $locint;
-  }else{
-    $obj->{address}='';
-  }
-  return $obj;
-}
 
-sub sortris {
-  my $c = shift;
-  $c=~s/\n/<nl>/g;
-	my @cfglines=split(/<nl>/,$c);
-	my @infolines = grep(/set routing-instance.*interface.*/,@cfglines);
-	my $infoline;
-  foreach $infoline(@infolines){
-  	$infoline =~ s/\s\s//ig;
-		if($infoline =~ m/set\srouting-instances\s([\w\-\_]+)\sinterface\s([\w\-\/\.]+)/ig){
-	    my $ri = $1;
-	    my $interface = $2;
-	    $riint->{$interface} = $ri;          #print "NOMATCHRI: $infoline \n";
-		}
-	}
-}
 
 sub buildGbicHash{
   my ($c,$model)=@_;
   my %fpcstart_hash;
+  my $gbics;
   $fpcstart_hash{'SRX5400_0'}='0';
   $fpcstart_hash{'SRX5400_1'}='3';
   $fpcstart_hash{'SRX1500_0'}='0';
@@ -368,6 +365,27 @@ sub buildGbicHash{
       }
     }
   }
+  return $gbics;
+}
+
+sub getstatics{
+  my $c=shift;
+  $c=~s/\n/<nl>/g;
+  my $statics;
+	for(split(/<nl>/,$c)){
+		my $l=$_;
+		if($l=~m/set routing-options static route\s(([\d\.]+)\/([\d]+))\s(.*)/i){
+			#print "l:$l\n";
+			my $net=$2;
+      my $bits=$3;
+			my $action=$4;
+			my ($description,$int,$vrf,$vlan,$coname);
+			if($action=~m/next-hop ([\d\.]+)/i){
+        push(@{$statics},{'net'=>$net,'bits'=>$bits}) if $bits>8;
+			}
+    }
+  }
+  return $statics;
 }
 
 1
