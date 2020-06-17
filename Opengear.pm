@@ -23,6 +23,7 @@ sub getinfo{
   for(@config){
     $obj->{model}=$1 if $_=~/config.system.model\s+(.*)/i;
     $obj->{version}=$1 if $_=~/.*Version\s+([\w\.]+).*/i;
+    $obj->{serial}=$1 if $_=~/config.system.name\s(.*)/i;
   }
   my $sn=pop @config;
   $obj->{serial}=$sn if $sn=~/^[\d]+$/;
