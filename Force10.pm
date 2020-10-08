@@ -38,7 +38,7 @@ sub getinfo{
     if($obj->{model} eq 'E300'){
       $obj->{serial}=$1 if $_=~/!Chassis: Serial Number : ([\w]+)/i;
     }else{
-      if($_=~/!Inventory: \*\s(.*)/i){
+      if($_=~/!Inventory: \*\s(.*)/i && $_!~/.*usbflash.*/){
         my @ia=split(/\s+/,$1);
         $obj->{serial}=$ia[7];
         $obj->{serial}=$ia[2] if $obj->{serial} eq 'N/A' || !$obj->{serial};

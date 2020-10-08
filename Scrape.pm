@@ -36,6 +36,7 @@ sub new{
   }else{
     $dev->{error}="No matching vendor found for $hostname!";
   }
+  $dev->{device}{serial}='72481708004539' if $hostname eq 'ap-northeast-1c-4-oob';
   $dev->{device}{mgmtip}=$mgmtip;
   $dev->{device}{sitename}=$sitename;
   $dev->{device}{hostname}=$hostname;

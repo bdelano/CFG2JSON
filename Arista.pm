@@ -1,18 +1,20 @@
 package CFG2JSON::Arista;
 use strict;
 use Data::Dumper;
-my $gbics;
+my $modules;
 
 sub new{
-  $gbics=();
+  $modules=();
   my $class = shift;
   my $args = { @_ };
   my $config=$args->{config};
-  $gbics=buildGBICHash($config);
+  $modules=buildModuleHash($config);
+  addGBICS() if $modules->{mods};
   my $dev=getinfo($config);
   my $interfaces=getinterfaces($config);
   #my $interfaces={};
   $dev->{interfaces}=$interfaces;
+  $dev->{modules}=$modules->{mods};
   my $self = bless {device=>$dev}, $class;
 }
 
@@ -38,29 +40,58 @@ sub getinfo{
   return $obj;
 }
 
-sub buildGBICHash{
+sub buildModuleHash{
   my $c = shift;
   $c =~ s/\n/<nl>/g;
   my $ret;
   for(split(/!System has/,$c)){
-    if($_=~/.*transceiver slots/){
+    if($_=~/.*(transceiver slots)|(card slots)/){
       for(split(/<nl>/,$_)){
         if($_=~/!\s+([\d\/]+.*)/){
           my @list=split(/\s+/,$1);
           if($list[1] eq 'Not'){
-            $ret->{$list[0]}{vendor}='none';
-            $ret->{$list[0]}{model}='none';
-            $ret->{$list[0]}{serial}='none';
+            $ret->{gbics}->{$list[0]}{vendor}='none';
+            $ret->{gbics}->{$list[0]}{model}='none';
+            $ret->{gbics}->{$list[0]}{serial}='none';
           }else{
-            $ret->{$list[0]}{vendor}=$list[1];
-            $ret->{$list[0]}{model}=$list[-3];
-            $ret->{$list[0]}{serial}=$list[-2];
+            $ret->{gbics}->{$list[0]}{description}='vendor:'.$list[1];
+            $ret->{gbics}->{$list[0]}{part_id}=$list[-3];
+            $ret->{gbics}->{$list[0]}{serial}=$list[-2];
+            $ret->{gbics}->{$list[0]}{name}=$list[0];
+          }
+        }elsif($_=~/!\s+(Linecard([\d]+).*)/){
+          my $lcn=$2;
+          my @list=split(/\s+/,$1);
+          if($list[1] ne 'Not'){
+            $ret->{mods}->{$list[0]}{cardname}=$list[0];
+            $ret->{mods}->{$list[0]}{cardnumber}=$lcn;
+            $ret->{mods}->{$list[0]}{model}=$list[1];
+            $ret->{mods}->{$list[0]}{partnumber}=$list[1];
+            $ret->{mods}->{$list[0]}{version}=$list[2];
+            $ret->{mods}->{$list[0]}{serial}=$list[3];
+            $ret->{mods}->{$list[0]}{vendor}='Arista';
+            $ret->{mods}->{$list[0]}{devicerole}='LineCard';
           }
         }
       }
     }
   }
   return $ret;
+}
+
+sub addGBICS{
+  my $c = shift;
+  for my $m (keys %{$modules->{mods}}){
+    my $card=$modules->{mods}{$m}->{cardnumber};;
+    for my $gb (keys %{$modules->{gbics}}){
+      my @gbns=split('/',$gb);
+      if($card eq $gbns[0] && $modules->{gbics}{$gb}{serial} ne 'none'){
+        my $gbic=$modules->{gbics}{$gb};
+        $gbic->{port}=$gb;
+        $modules->{mods}{$m}{gbics}{$gb}=$gbic;
+      }
+    }
+  }
 }
 
 sub getinterfaces{
@@ -90,9 +121,9 @@ sub getinterfaces{
         $bi=~s/Ethernet//;
         $bi=~s/\/1$//;
         #print "i:$i bi:$bi\n";
-        if($gbics->{$bi}{model}){
-          $ints->{$i}{formfactor}=$gbics->{$bi}{model};
-          $ints->{$i}{serial}=$gbics->{$bi}{serial};
+        if($modules->{gbics}->{$bi}{model}){
+          $ints->{$i}{formfactor}=$modules->{gbics}->{$bi}{model};
+          $ints->{$i}{serial}=$modules->{gbics}->{$bi}{serial};
         }elsif($i=~/management/){
           $ints->{$i}{formfactor}='1000BaseTX';
         }else{

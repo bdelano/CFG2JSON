@@ -23,7 +23,7 @@ sub getinfo{
   for(@config){
     $obj->{model}=$1 if $_=~/# System Board Model: (.*)/i;
     $obj->{version}=$1 if $_=~/# Version: Peakflow SP (.*)/i;
-    $obj->{serial}=$1 if $_=~/# Serial Number: (.*)/i;
+    $obj->{serial}=$1 if $_=~/# Chassis Serial Number: (.*)/i;
     $obj->{processor}=$1 if $_=~/# Processor: (.*)/i;
     if($_=~/# (Slot [\d]+): (.*?): (.*)/i){
       my $slot=lc($1);
